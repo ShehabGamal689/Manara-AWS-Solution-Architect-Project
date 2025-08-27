@@ -81,3 +81,117 @@ This serverless architecture processes user-uploaded images by leveraging:
       { "Effect": "Allow", "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"], "Resource": "*" }
     ]
   }
+
+Lambda Layer (Pillow)
+
+Purpose: Ship native image libs (Pillow) compatible with Lambda.
+
+Compatibility: Built for python3.9 and the function’s architecture (x86_64 or arm64).
+
+Structure check: ZIP root contains python/PIL/... and python/Pillow-<ver>.dist-info/....
+
+<a id="s3-event-notifications"></a>
+
+S3 Event Notifications
+
+Trigger: Source bucket → Event notification → Lambda
+
+Event type: PUT (ObjectCreated)
+
+Prefix: images/ (recommended to limit to uploads folder)
+
+Note: No Lambda “asynchronous destination” is required; the function writes to the destination bucket directly.
+
+<a id="optional-api-gateway"></a>
+
+(Optional) API Gateway
+
+Purpose: Provide a signed upload endpoint or direct upload proxy.
+
+Pattern: Client requests a pre-signed URL → uploads file to source bucket without exposing credentials.
+
+<a id="optional-dynamodb"></a>
+
+(Optional) DynamoDB
+
+Purpose: Persist image metadata (uploader, timestamps, sizes, processing status, checksum/idempotency).
+
+Partition key: imageId or the S3 object key.
+
+<a id="optional-step-functions"></a>
+
+(Optional) Step Functions
+
+Purpose: Orchestrate multi-step processing (e.g., resize → watermark → optimize → notify), handle retries, DLQs.
+
+<a id="data-flow"></a>
+
+🔄 Data Flow
+
+Client uploads images/<filename>.<ext> to manara-image-resize-uploader (optionally via pre-signed URL).
+
+S3 emits event ObjectCreated:Put with bucket/key → triggers Lambda.
+
+Lambda reads the source object (s3:GetObject).
+
+Lambda resizes (e.g., desktop, tablet, phone) and optionally watermarks/optimizes.
+
+Lambda writes each variant to manara-image-resize-reciever with keys like:
+
+desktop/<basename>.<ext>
+tablet/<basename>.<ext>
+phone/<basename>.<ext>
+
+
+(Optional) Lambda records metadata in DynamoDB and/or publishes a notification.
+
+Event Flow Diagram
+
+User / Client
+  ↓ (upload)
+S3 Source Bucket (manara-image-resize-uploader : images/)
+  ↓ (ObjectCreated)
+AWS Lambda (Python 3.9 + Pillow)
+  ↓ (PutObject)
+S3 Destination Bucket (manara-image-resize-reciever)
+  ↓
+(Consumers / CDN / Download via presigned URL)
+
+
+<a id="high-availability--fault-tolerance"></a>
+
+🛡️ High Availability & Fault Tolerance
+
+Serverless scaling: Lambda scales horizontally with incoming S3 events.
+
+Retries: S3 → Lambda invokes at-least-once; transient errors retried automatically by Lambda.
+
+Idempotency: Use deterministic destination keys (as above) and/or checksums to avoid duplicates.
+
+Concurrency control: Configure reserved concurrency if you need to rate-limit downstream dependencies.
+
+(Optional) DLQ: Add an SQS dead-letter queue to capture failed invocations for later replay.
+
+Multi-AZ durability: S3 and Lambda are regional, highly available by design.
+
+<a id="security-considerations"></a>
+
+🔐 Security Considerations
+
+Least privilege IAM: Scope the Lambda role to exactly the two buckets and the images/ prefix on the source.
+
+Block Public Access: Keep both S3 buckets private; use pre-signed URLs for controlled access.
+
+Encryption:
+
+At rest: Enable S3 default encryption (SSE-S3 or SSE-KMS).
+
+In transit: HTTPS for all client uploads/downloads.
+
+If using SSE-KMS, grant the Lambda role kms:Decrypt (source) / kms:Encrypt (dest) on the KMS keys.
+
+Network: Consider VPC endpoints (Gateway/Interface) for S3 to keep traffic inside AWS.
+
+Monitoring: CloudWatch Logs for Lambda, S3 server access logs (or CloudTrail data events) for auditability.
+
+Validation: Validate MIME type/extension in Lambda to accept only supported image formats and reject over-sized files.
