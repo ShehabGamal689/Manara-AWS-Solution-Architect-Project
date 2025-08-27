@@ -42,7 +42,9 @@ This serverless architecture processes user-uploaded images by leveraging:
 
 <a id="architecture-diagram"></a>
 ## 🖼️ Architecture Diagram
-![Serverless Image Processing](architecture-diagram.png)  
+
+<img width="1191" height="751" alt="AWS-ServerlessImagePorcessing drawio" src="https://github.com/user-attachments/assets/bd5bf10b-5b84-4521-8131-59c562feb171" />
+
 *Figure 1: High-level diagram of the solution*
 
 ---
