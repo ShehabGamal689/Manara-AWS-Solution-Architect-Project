@@ -1,5 +1,3 @@
-<!-- Save your diagram image in the repo as: serverless-image-processing-architecture.png -->
-
 # AWS Solution Architecture
 
 > A serverless, event-driven image processing pipeline using Amazon S3 triggers, AWS Lambda (Python + Pillow), and separate source/destination buckets.
@@ -45,7 +43,8 @@ This serverless architecture processes user-uploaded images by leveraging:
 <a id="architecture-diagram"></a>
 ## 🖼️ Architecture Diagram
 
-![Serverless Image Processing Architecture](serverless-image-processing-architecture.png)  
+<img width="1191" height="751" alt="AWS-ServerlessImagePorcessing drawio" src="https://github.com/user-attachments/assets/9286f6b2-9330-409b-a32c-33ecd3e7d1ff" />
+
 *Figure 1: High-level diagram of the solution*
 
 ---
@@ -69,8 +68,10 @@ This serverless architecture processes user-uploaded images by leveraging:
   - Runtime **Python 3.9**, Memory ≥ **512 MB**, Timeout ≥ **30 s**.  
   - **Environment variables:**  
     - `DEST_BUCKET` (required)  
-    - `SRC_BUCKET` (optional safety check)  
+    - `SRC_BUCKET` (optional safety check) 
+ 
 - **Execution role permissions (minimum):**
+
   ```json
   {
     "Version": "2012-10-17",
@@ -80,7 +81,8 @@ This serverless architecture processes user-uploaded images by leveraging:
         "Condition": { "StringLike": { "s3:prefix": ["images/*"] } } },
       { "Effect": "Allow", "Action": ["s3:PutObject"], "Resource": "arn:aws:s3:::manara-image-resize-reciever/*" },
       { "Effect": "Allow", "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"], "Resource": "*" }
-
+    ]
+  }
 
 <a id="lambda-layer-pillow"></a>
 
@@ -197,5 +199,3 @@ Network: Consider VPC endpoints (Gateway/Interface) for S3 to keep traffic insid
 Monitoring: CloudWatch Logs for Lambda, S3 server access logs (or CloudTrail data events) for auditability.
 
 Validation: Validate MIME type/extension in Lambda to accept only supported image formats and reject over-sized files.
-    ]
-  }
